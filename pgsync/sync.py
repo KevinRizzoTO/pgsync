@@ -804,6 +804,7 @@ class Sync(Base, metaclass=Singleton):
         ]
 
         """
+        start_time = time.time()
         payload: Payload = payloads[0]
         if payload.tg_op not in TG_OP:
             logger.exception(f"Unknown tg_op {payload.tg_op}")
@@ -920,6 +921,10 @@ class Sync(Base, metaclass=Singleton):
                         filters={self.tree.root.table: l1},
                     )
 
+        logger.debug(
+            f"Finished _payloads for index {self.index} in {time.time() - start_time} seconds"
+        )
+
     def sync(
         self,
         filters: Optional[dict] = None,
@@ -927,6 +932,7 @@ class Sync(Base, metaclass=Singleton):
         txmax: Optional[int] = None,
         ctid: Optional[dict] = None,
     ) -> Generator:
+        start_time = time.time()
         self.query_builder.isouter = True
         self.query_builder.from_obj = None
 
@@ -996,6 +1002,10 @@ class Sync(Base, metaclass=Singleton):
                     doc["pipeline"] = self.pipeline
 
                 yield doc
+
+        logger.debug(
+            f"Finished sync for index {self.index} in {time.time() - start_time} seconds"
+        )
 
     @property
     def checkpoint(self) -> int:
@@ -1144,6 +1154,7 @@ class Sync(Base, metaclass=Singleton):
         It is called when an event is received from Redis.
         Deserialize the payload from Redis and sync to Elasticsearch/OpenSearch
         """
+        start_time = time.time()
         # this is used for the views.
         # we substitute the views for the base table here
         for i, payload in enumerate(payloads):
@@ -1190,6 +1201,10 @@ class Sync(Base, metaclass=Singleton):
         # for truncate, tg_op txids is None so skip setting the checkpoint
         if txids != set([None]):
             self.checkpoint: int = min(min(txids), self.txid_current) - 1
+
+        logger.debug(
+            f"Finished _on_publish for index {self.index} in {time.time() - start_time} seconds"
+        )
 
     def pull(self) -> None:
         """Pull data from db."""
